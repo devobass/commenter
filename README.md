@@ -153,6 +153,14 @@ The database is expected to be initialized before the server starts.
 └── go.sum
 ```
 
+## Missing
+
+This comment server is missing:
+- A HTTP body size limit, so now everyone can send a bomb to your server.
+- Valid encoding, so now everyone can send garbled binaries and text.
+- Time-based sorting.
+- Literally every quality-of-life features.
+
 ## License
 
 This project is licensed under the ISC License.
