@@ -36,7 +36,7 @@ go mod tidy
 Build the server:
 
 ```sh
-go build -o comment-server .
+go build -o commenter .
 ```
 
 ## Usage
@@ -44,7 +44,7 @@ go build -o comment-server .
 Start the server using the default configuration:
 
 ```sh
-./comment-server
+./commenter
 ```
 
 The server listens on:
