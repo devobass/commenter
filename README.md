@@ -115,6 +115,7 @@ curl http://localhost:8000/fetch
 ```json
 [
     {
+        "time": "2026-11-02T13:38:26.110186357+07:00"
         "username": "guest",
         "message": "Hello world"
     }
@@ -154,11 +155,9 @@ The database is expected to be initialized before the server starts.
 ```
 
 ## Missing
-
 This comment server is missing:
 - A HTTP body size limit, so now everyone can send a bomb to your server.
 - Valid encoding, so now everyone can send garbled binaries and text.
-- Time-based sorting.
 - Literally every quality-of-life features.
 
 ## License
