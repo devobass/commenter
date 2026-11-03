@@ -170,7 +170,8 @@ This project is licensed under the ISC License.
 - Yes.
 
 > **Ok... was the frontend slopped?**
-- Yes.
+- ~Yes.~
+- NOT ANYMORE!!!
 
 > **...Was the backend slopped?**
 - Nah.
