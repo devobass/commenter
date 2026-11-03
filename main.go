@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"flag"
-	"time"
 	"log/slog"
 	"net"
+	"io/fs"
+	"errors"
 	"net/http"
+	"os"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -126,32 +129,68 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func createDatabase() (error) {
+	os.Create(path)
+	db, err := sql.Open("sqlite", path)
+
+	if err != nil {
+		return err
+	}
+
+	defer db.Close()
+
+	_, err = db.Exec("CREATE TABLE messages (time TIMESTAMP, author TEXT, data TEXT);")
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	flag.IntVar(&maxSize, "m", 500, "Specify the maximum message size.")
 	flag.StringVar(&ip, "h", "localhost", "Specify the IP for the server to listen on.")
 	flag.StringVar(&port, "p", "8000", "Specify the Port for the server to listen on.")
-	flag.StringVar(&path, "d", "./messages.sqlite", "Specify the SQLite database file for the server to use.")
+	flag.StringVar(&path, "d", "messages.sqlite", "Specify the SQLite database file for the server to use.")
 	flag.Parse()
 
 	listen := net.JoinHostPort(ip, port)
 
 	var err error
 	
+	_, err = os.Stat(path)
+
+	if errors.Is(err, fs.ErrNotExist) {
+		slog.Info("database does not exist, creating database.")
+		err = createDatabase()
+
+		if err != nil {
+			slog.Error("error while creating database", "err", err)
+			os.Exit(1)
+		}
+	} 
+
+	if err != nil {
+		slog.Error("error while opening database", "err", err)
+		os.Exit(1)
+	}
+
 	db, err = sql.Open("sqlite", path)
 
 	if err != nil {
-		slog.Info("error while opening database", "err", err)
-		return
+		slog.Error("error while opening database", "err", err)
+		os.Exit(1)
 	}
+
+	defer db.Close()
 
 	err = db.Ping()
 
 	if err != nil {
-		slog.Info("error while accessing database", "err", err)
-		return
+		slog.Error("error while accessing database", "err", err)
+		os.Exit(1)
 	}
-
-	defer db.Close()
 
 	fileServer := http.FileServer(http.Dir("./site"))
 	http.HandleFunc("/comment", comment)
@@ -162,6 +201,6 @@ func main() {
 
 	if err != nil {
 		slog.Error("error while starting web server", "err", err)
-		return
+		os.Exit(1)
 	}
 }
