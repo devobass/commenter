@@ -22,7 +22,6 @@ type Comment struct {
 var (
 	db *sql.DB
 	ip, port, path string
-	maxSize		int
 )
 
 func comment(w http.ResponseWriter, r *http.Request) {
@@ -30,11 +29,6 @@ func comment(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "POST")
 
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if r.ContentLength > int64(maxSize) {
-		http.Error(w, "Content Too Large", http.StatusBadRequest)	
 		return
 	}
 
@@ -127,7 +121,6 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	flag.IntVar(&maxSize, "m", 500, "Specify the maximum message size.")
 	flag.StringVar(&ip, "h", "localhost", "Specify the IP for the server to listen on.")
 	flag.StringVar(&port, "p", "8000", "Specify the Port for the server to listen on.")
 	flag.StringVar(&path, "d", "./messages.sqlite", "Specify the SQLite database file for the server to use.")
