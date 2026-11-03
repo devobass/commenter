@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"flag"
+	"time"
 	"log/slog"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 )
 
 type Comment struct {
+	Time	string `json:"time"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
 }
@@ -24,8 +26,8 @@ var (
 )
 
 func comment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
-		w.Header().Set("Allow", "PUT")
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
 
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -49,13 +51,14 @@ func comment(w http.ResponseWriter, r *http.Request) {
 
 	username := form.Get("username")
 	message := form.Get("message")
+	time := time.Now().Unix()
 
 	if username == "" || message == "" {
 		http.Error(w, "Missing Argument", http.StatusBadRequest)	
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO messages(author, data) VALUES (?, ?)", username, message)
+	_, err = db.Exec("INSERT INTO messages(time, author, data) VALUES (?, ?, ?)", time, username, message)
 
 	if err != nil {
 		slog.Error("error while inserting to database", "err", err)
@@ -75,7 +78,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := []Comment{}
-	rows, err := db.Query("SELECT author, data FROM messages")
+	rows, err := db.Query("SELECT time, author, data FROM messages")
 
 	if err != nil {
 		slog.Error("failed to retrieve message from db", "err", err)
@@ -87,7 +90,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var cmt Comment
-		err = rows.Scan(&cmt.Username, &cmt.Message)
+		err = rows.Scan(&cmt.Time, &cmt.Username, &cmt.Message)
 
 		if err != nil {
 			slog.Error("error occurred while reading data from db", "err", err)
@@ -118,28 +121,6 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func indexHTML(w http.ResponseWriter, r *http.Request) {
-	fd, err := os.Open("index.html")
-
-	if err != nil {
-		slog.Error("error while serving static main site", "err", err)
-		http.Error(w, "index.html not found", http.StatusNotFound)
-		return
-	}
-
-	defer fd.Close()
-
-	stat, err := fd.Stat()
-
-	if err != nil {
-		http.Error(w, "unable to stat index.html", http.StatusInternalServerError)
-		slog.Error("error while retrieving the file stat", "err", err)
-		return
-	}
-
-	http.ServeContent(w, r, "index.html", stat.ModTime(), fd)	
-}
-
 func main() {
 	flag.StringVar(&ip, "h", "localhost", "Specify the IP for the server to listen on.")
 	flag.StringVar(&port, "p", "8000", "Specify the Port for the server to listen on.")
@@ -147,19 +128,29 @@ func main() {
 	flag.Parse()
 
 	listen := net.JoinHostPort(ip, port)
+
+	var err error
 	
-	db, err := sql.Open("sqlite", path)
+	db, err = sql.Open("sqlite", path)
 
 	if err != nil {
 		slog.Info("error while opening database", "err", err)
 		return
 	}
 
+	err = db.Ping()
+
+	if err != nil {
+		slog.Info("error while accessing database", "err", err)
+		return
+	}
+
 	defer db.Close()
 
+	fileServer := http.FileServer(http.Dir("./site"))
 	http.HandleFunc("/comment", comment)
 	http.HandleFunc("/fetch", fetch)
-	http.HandleFunc("/", indexHTML)
+	http.Handle("/", fileServer)
 
 	err = http.ListenAndServe(listen, nil)
 
