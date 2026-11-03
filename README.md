@@ -27,12 +27,6 @@ git clone https://github.com/<username>/<repository>.git
 cd <repository>
 ```
 
-Create a database if there isn't one already:
-
-```sh
-./make_db.sh
-```
-
 Install dependencies:
 
 ```sh
