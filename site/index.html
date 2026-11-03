@@ -9,7 +9,8 @@
 		<center>
 		<h1>Very Evil Frontend</h1>		
 		<div id="post">
-			<form action="/comment" method="post">
+			<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+			<form action="/comment" method="post" target="dummyframe">
 				<label for="username">Name: </label>
 				<input type="text" name="username" id="username">
 				<br>
