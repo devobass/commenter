@@ -9,4 +9,4 @@ then
 fi
 
 touch messages.sqlite
-sqlite3 ./messages.sqlite 'CREATE TABLE messages ( id INTEGER PRIMARY KEY AUTOINCREMENT, author TEXT, data TEXT);'
+sqlite3 ./messages.sqlite 'CREATE TABLE messages ( time TIMESTAMP, author TEXT, data TEXT);'
