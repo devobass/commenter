@@ -27,6 +27,12 @@ git clone https://github.com/<username>/<repository>.git
 cd <repository>
 ```
 
+Create a database if there isn't one already:
+
+```sh
+./make_db.sh
+```
+
 Install dependencies:
 
 ```sh
@@ -124,18 +130,13 @@ curl http://localhost:8000/fetch
 
 HTTP Status: `200 OK`
 
-### `GET /`
-
-Serves the static `index.html` frontend.
-
-The HTML file must be present in the server's working directory.
-
 ## Database
 
 Comments are stored in a SQLite database using the following schema:
 
 ```sql
 CREATE TABLE messages (
+    time TIMESTAMP,
     author TEXT,
     data TEXT
 );
@@ -143,33 +144,12 @@ CREATE TABLE messages (
 
 The database is expected to be initialized before the server starts.
 
-## Project Structure
-
-```text
-.
-├── main.go
-├── index.html
-├── messages.sqlite
-├── go.mod
-└── go.sum
-```
-
-## Missing
-This comment server is missing:
-- A HTTP body size limit, so now everyone can send a bomb to your server.
-- Valid encoding, so now everyone can send garbled binaries and text.
-- Literally every quality-of-life features.
-
-## License
-
-This project is licensed under the ISC License.
-
 ## FAQ
 
 > **Was the README slopped?**
 - Yes.
 
-> **Ok... was the frontend slopped?**
+> **Ok... was the example frontend slopped?**
 - ~Yes.~
 - NOT ANYMORE!!!
 
@@ -182,3 +162,6 @@ This project is licensed under the ISC License.
 > **What?**
 - Use something else other than this 🤑.
 
+## License
+
+This project is licensed under the ISC License.
