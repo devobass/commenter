@@ -130,7 +130,12 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 }
 
 func createDatabase() (error) {
-	os.Create(path)
+	_, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
 	db, err := sql.Open("sqlite", path)
 
 	if err != nil {
