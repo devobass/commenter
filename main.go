@@ -4,11 +4,11 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
+	"io/fs"
 	"log/slog"
 	"net"
-	"io/fs"
-	"errors"
 	"net/http"
 	"os"
 	"time"
@@ -36,10 +36,7 @@ func comment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.ContentLength > int64(maxSize) {
-		http.Error(w, "Content Too Large", http.StatusBadRequest)	
-		return
-	}
+	r.Body = http.MaxBytesReader(w, r.Body, int64(maxSize * 1024))
 
 	err := r.ParseForm()
 
@@ -114,6 +111,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = rows.Err()
+
 	if err != nil {
 		slog.Error("failed to retrieve message from db", "err", err)
 		http.Error(w, "could not retrieve message", http.StatusInternalServerError)
@@ -130,11 +128,12 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 }
 
 func createDatabase() (error) {
-	_, err := os.Create(path)
+	fd, err := os.Create(path)
 
 	if err != nil {
 		return err
 	}
+	defer fd.Close()
 
 	db, err := sql.Open("sqlite", path)
 
@@ -154,7 +153,7 @@ func createDatabase() (error) {
 }
 
 func main() {
-	flag.IntVar(&maxSize, "m", 500, "Specify the maximum message size.")
+	flag.IntVar(&maxSize, "m", 500, "Specify the maximum message size. (KB)")
 	flag.StringVar(&ip, "h", "localhost", "Specify the IP for the server to listen on.")
 	flag.StringVar(&port, "p", "8000", "Specify the Port for the server to listen on.")
 	flag.StringVar(&path, "d", "messages.sqlite", "Specify the SQLite database file for the server to use.")
