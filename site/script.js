@@ -43,6 +43,10 @@ function appendCommentToSite(comment) {
 
 (async () => {
 	await getData();
+	if (result.length == 0) {
+		const board = document.getElementById("board").innerHTML = "<p>such emptiness.</p>";
+		return
+	}
 	result.reverse().forEach(appendCommentToSite)
 	const board = document.getElementById("board");
 	board.replaceChildren();
