@@ -17,6 +17,7 @@ import (
 )
 
 type Comment struct {
+	Id	int	`json:"id"`
 	Time	string `json:"time"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
@@ -25,8 +26,38 @@ type Comment struct {
 var (
 	db *sql.DB
 	ip, port, path string
-	maxSize		int
-)
+	maxSize		int)
+
+func delete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete{
+		w.Header().Set("Allow", "DELETE")
+
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, int64(maxSize * 1024))
+
+	q := r.URL.Query()
+
+	id := q.Get("id")
+
+	if id == "" {
+		http.Error(w, "Missing Id To Delete", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec("DELETE FROM messages WHERE id = ?", id)
+
+	if err != nil {
+		slog.Error("error while deleting message", "err", err)
+		http.Error(w, "could not delete message from database", http.StatusInternalServerError)
+		return
+	}	
+
+	w.WriteHeader(http.StatusNoContent)
+	w.Write([]byte("deletion successful"))
+}
 
 func comment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -83,7 +114,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := []Comment{}
-	rows, err := db.Query("SELECT time, author, data FROM messages")
+	rows, err := db.Query("SELECT * FROM messages")
 
 	if err != nil {
 		slog.Error("failed to retrieve message from db", "err", err)
@@ -95,7 +126,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var cmt Comment
-		err = rows.Scan(&cmt.Time, &cmt.Username, &cmt.Message)
+		err = rows.Scan(&cmt.Id, &cmt.Time, &cmt.Username, &cmt.Message)
 
 		if err != nil {
 			slog.Error("error occurred while reading data from db", "err", err)
@@ -143,7 +174,7 @@ func createDatabase() (error) {
 
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE messages (time TIMESTAMP, author TEXT, data TEXT);")
+	_, err = db.Exec("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, time TIMESTAMP, author TEXT, data TEXT);")
 
 	if err != nil {
 		return err
@@ -199,6 +230,7 @@ func main() {
 	fileServer := http.FileServer(http.Dir("./site"))
 	http.HandleFunc("/comment", comment)
 	http.HandleFunc("/fetch", fetch)
+	http.HandleFunc("/delete", delete)
 	http.Handle("/", fileServer)
 
 	err = http.ListenAndServe(listen, nil)
