@@ -3,7 +3,7 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"flag"
 	"io/fs"
@@ -16,9 +16,9 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Comment struct {
-	Id	int	`json:"id"`
-	Time	string `json:"time"`
+type CommentRequest struct {
+	Id	int64	`json:"id"`
+	Time	int64	`json:"time"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
 }
@@ -26,7 +26,8 @@ type Comment struct {
 var (
 	db *sql.DB
 	ip, port, path string
-	maxSize		int)
+	maxSize		int
+)
 
 func delete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete{
@@ -38,16 +39,17 @@ func delete(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxSize * 1024))
 
-	q := r.URL.Query()
+	var req CommentRequest
 
-	id := q.Get("id")
+	err := json.UnmarshalRead(r.Body, &req)	
 
-	if id == "" {
-		http.Error(w, "Missing Id To Delete", http.StatusBadRequest)
+	if err != nil {
+		slog.Error("error while parsing json request", "err", err)
+		http.Error(w, "could not parse json request", http.StatusBadRequest)
 		return
 	}
 
-	_, err := db.Exec("DELETE FROM messages WHERE id = ?", id)
+	res, err := db.Exec("DELETE FROM messages WHERE id = ?", req.Id)
 
 	if err != nil {
 		slog.Error("error while deleting message", "err", err)
@@ -55,8 +57,20 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}	
 
+	affected, err := res.RowsAffected()
+
+	if err != nil {
+		slog.Error("unable to query affected rows", "err", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}	
+
+	if affected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
-	w.Write([]byte("deletion successful"))
 }
 
 func comment(w http.ResponseWriter, r *http.Request) {
@@ -69,32 +83,24 @@ func comment(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxSize * 1024))
 
-	err := r.ParseForm()
+	var cmt CommentRequest
+
+	err := json.UnmarshalRead(r.Body, &cmt)	
 
 	if err != nil {
-		slog.Error("error while parsing form", "err", err)
-		http.Error(w, "Invalid Form Data", http.StatusBadRequest)	
+		slog.Error("error while parsing json request", "err", err, "req", cmt)
+		http.Error(w, "invalid json request", http.StatusBadRequest)
 		return
 	}
 
-	form := r.Form
+	cmt.Time = time.Now().Unix()
 
-	if form == nil {
-		slog.Error("form is not application/x-www-form-urlencoded", "err", err)
-		http.Error(w, "Invalid Form Data", http.StatusBadRequest)	
-		return
-	}
-
-	username := form.Get("username")
-	message := form.Get("message")
-	time := time.Now().Unix()
-
-	if username == "" || message == "" {
+	if cmt.Username == "" || cmt.Message == "" {
 		http.Error(w, "Missing Argument", http.StatusBadRequest)	
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO messages(time, author, data) VALUES (?, ?, ?)", time, username, message)
+	_, err = db.Exec("INSERT INTO messages(time, author, data) VALUES (?, ?, ?)", cmt.Time, cmt.Username, cmt.Message)
 
 	if err != nil {
 		slog.Error("error while inserting to database", "err", err)
@@ -103,7 +109,6 @@ func comment(w http.ResponseWriter, r *http.Request) {
 	}	
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("insert successful"))
 }
 
 func fetch(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +118,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := []Comment{}
+	data := []CommentRequest{}
 	rows, err := db.Query("SELECT * FROM messages")
 
 	if err != nil {
@@ -125,7 +130,7 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var cmt Comment
+		var cmt CommentRequest
 		err = rows.Scan(&cmt.Id, &cmt.Time, &cmt.Username, &cmt.Message)
 
 		if err != nil {
@@ -151,11 +156,13 @@ func fetch(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(data)
+	jd, err := json.Marshal(data)
 
 	if err != nil {
 		slog.Error("failed to encode message data in json", "err", err)
 	}
+
+	w.Write(jd)
 }
 
 func createDatabase() (error) {
