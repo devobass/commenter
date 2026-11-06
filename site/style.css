@@ -15,18 +15,18 @@ input, textarea, button {
 .cmt {
 	display: grid;
 	grid-template-rows:	1fr auto;
-	grid-template-columns:	auto 1fr;
+	grid-template-columns:	1fr auto;
 }
 
-.username {
-
+.msgid {
+	font-size: 5px;
+	text-align: right;
 }
 
 .message {
 	font-size: 15px;
 	border-left: 4px solid white;
 	padding-left: 1em;
-	grid-row: span 2;
 }
 
 .time {

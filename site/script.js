@@ -1,6 +1,31 @@
 var toInsert = []
 var result
 
+const button = document.getElementById('comment-button');
+button.addEventListener('click', async (e) => {
+	 e.preventDefault();
+	const username = document.getElementById("username").value;
+	const message = document.getElementById("message").value; 
+
+	const payload = { username, message };
+
+	try {
+		const response = await fetch("/comment", {
+			method: "POST",
+			body: JSON.stringify(payload),
+			headers: { "Content-Type": "application/json; charset=UTF-8" }
+		});
+
+		if (response.ok) {
+			window.location.reload();
+		} else {
+			console.error("Server returned an error status:", response.status);
+		}
+	} catch (error) {
+		console.error("Network error occurred:", error);
+	}
+});
+
 async function getData() {
 	const url = "/fetch";
 	try {
@@ -24,19 +49,23 @@ function appendCommentToSite(comment) {
 	const user = document.createElement('span');
 	const msg = document.createElement('span');
 	const time = document.createElement('span');
+	const id = document.createElement('id');
 
 	p.className = "cmt"
 	user.className = "username"
 	msg.className = "message"
 	time.className = "time"
+	id.className = "msgid"
 
 	user.textContent = `${comment.username}`
 	msg.textContent = `${comment.message}`
+	id.textContent = `${comment.id}`
 	time.textContent = date;
 
 	p.appendChild(user);
 	p.appendChild(time);
 	p.appendChild(msg);
+	p.appendChild(id);
 
 	toInsert.push(p);
 }

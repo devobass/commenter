@@ -4,15 +4,6 @@ A lightweight HTTP comment server written in Go, using SQLite for persistent sto
 
 The server provides a simple API for submitting and retrieving comments, alongside a static HTML frontend.
 
-## Features
-
-- Submit comments using HTTP PUT requests.
-- Retrieve stored comments as JSON.
-- SQLite-backed persistent storage.
-- Configurable listening address, port, and database path.
-- Built with Go's standard `net/http` package.
-- SQLite driver powered by [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite).
-
 ## Requirements
 
 - Go
@@ -69,60 +60,88 @@ Example:
 
 The specified database directory must exist.
 
-## API
+## API Documentation
 
-### `PUT /comment`
+Base URL: `http://localhost:8000`
 
-Submit a new comment.
+All API request and response bodies use JSON unless otherwise specified.
 
-**Content-Type:** `application/x-www-form-urlencoded`
+### Endpoints
 
-#### Parameters
+#### `POST /comment`
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `username` | Yes | Comment author's username |
-| `message` | Yes | Comment content |
+Create a new comment.
 
-#### Example
+**Request body:**
 
-```sh
-curl -X PUT http://localhost:8000/comment \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "username=guest&message=Hello%20world"
+```json
+{
+  "username": "user",
+  "message": "Hello, world!"
+}
 ```
 
-#### Response
+**Responses:**
 
-```text
-insert successful
-```
+| Status | Description |
+|---|---|
+| `201 Created` | Comment successfully created |
+| `400 Bad Request` | Invalid JSON or missing username/message |
+| `405 Method Not Allowed` | Request method is not POST |
+| `413 Content Too Large` | Request body exceeds the configured size limit |
+| `500 Internal Server Error` | Database insertion failed |
 
-HTTP Status: `201 Created`
+The server automatically assigns an ID and Unix timestamp.
 
-### `GET /fetch`
+#### `GET /fetch`
 
 Retrieve all stored comments.
 
-#### Example
-
-```sh
-curl http://localhost:8000/fetch
-```
-
-#### Response
+**Response body:**
 
 ```json
 [
-    {
-        "time": "2026-11-02T13:38:26.110186357+07:00"
-        "username": "guest",
-        "message": "Hello world"
-    }
+  {
+    "id": 1,
+    "time": 1793935201,
+    "username": "user",
+    "message": "Hello, world!"
+  }
 ]
 ```
 
-HTTP Status: `200 OK`
+**Responses:**
+
+| Status | Description |
+|---|---|
+| `200 OK` | Comments successfully retrieved |
+| `405 Method Not Allowed` | Request method is not GET |
+| `500 Internal Server Error` | Database retrieval failed |
+
+Returns an empty JSON array when no comments exist.
+
+#### `DELETE /delete`
+
+Delete a comment by its ID.
+
+**Request body:**
+
+```json
+{
+  "id": 1
+}
+```
+
+**Responses:**
+
+| Status | Description |
+|---|---|
+| `204 No Content` | Comment successfully deleted |
+| `400 Bad Request` | Invalid JSON |
+| `404 Not Found` | Comment does not exist or affected-row lookup failed |
+| `405 Method Not Allowed` | Request method is not DELETE |
+| `413 Content Too Large` | Request body exceeds the configured size limit |
+| `500 Internal Server Error` | Database deletion failed |
 
 ## Database
 

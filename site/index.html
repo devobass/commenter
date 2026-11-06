@@ -9,14 +9,14 @@
 		<center>
 		<h1>Very Evil Frontend</h1>		
 		<div id="post">
-			<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
-			<form action="/comment" method="post" target="dummyframe">
-				<label for="username">Name: </label>
+			<form>
+				<legend>Name</legend>
 				<input type="text" name="username" id="username">
-				<br>
+				<legend>Message</legend>
 				<textarea name="message" id="message" rows="8" cols="40"></textarea>
 				<br>
-				<button type="submit">Post</button>
+				<br>
+				<button id="comment-button" type="button">Post</button>
 			</form>
 			
 		</div>
